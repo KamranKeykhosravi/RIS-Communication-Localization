@@ -16,7 +16,7 @@ classdef CRBcal
             obj.risElementLoc = obj.getRisElLoc;
             obj = obj.getInits;
         end
-
+        
         function RisElLoc = getRisElLoc(obj)
             % calculates a 3XM matrix containing ris element locations
             Lris = (obj.config.Mc-1)*obj.config.risElementDist;
@@ -49,7 +49,7 @@ classdef CRBcal
             obj.IV.ur = exp(-1j*obj.IV.k*obj.risElementLoc.') * obj.IV.RisPhaseProfile; %  u_r
             obj.IV.urAz = (exp(-1j*obj.IV.k*obj.risElementLoc.').* (-1j*obj.IV.kaz*obj.risElementLoc.')) * obj.IV.RisPhaseProfile;
             obj.IV.urEl = (exp(-1j*obj.IV.k*obj.risElementLoc.').* (-1j*obj.IV.kel*obj.risElementLoc.')) * obj.IV.RisPhaseProfile;
-
+            
         end
         
         function Rate = getRate(obj)
@@ -57,34 +57,37 @@ classdef CRBcal
             % ris phase profiles
             rng(0)
             RisPhaseProfile = exp(1j*2*pi*rand(obj.config.Mc^2,1));
-            Rate.ur = exp(-1j*obj.IV.k*obj.risElementLoc.') * RisPhaseProfile;
+            ur = exp(-1j*obj.IV.k*obj.risElementLoc.') * RisPhaseProfile;
             cyclicPrifix=1.07;
             Noise = (obj.config.Nsc*obj.config.Noise_Factor*obj.config.NPSD*obj.config.Df);
-            Rate.snr = (obj.config.TxPower*abs(obj.IV.gr.*Rate.ur).^2)./Noise;
-            Rate.rate = log2(1+Rate.snr)/cyclicPrifix;
-            if (obj.config.risPhaseMethod=="directional")
-                Nn=100;
-                Rate.rate = zeros(size(Rate.rate));
-                for p = 1:size(Rate.ur,1)
-                    P=obj.IV.uePos.getV(1,p);
-                    peb = obj.PEB(p);
-                    sig = peb/sqrt(3);
-                    for n=1:Nn
-                        Pn = P + randn(1,3)*sig/sqrt(3);
-                        uePos = SupPoint(Pn(1),Pn(2),Pn(3));
-                        k  = uePos.getKv(obj.config.lambda);
-                        RisPhaseProfile = exp(1j*k*obj.risElementLoc.').';
-                        Rate.ur(p) = exp(-1j*obj.IV.k(p,:)*obj.risElementLoc.') * RisPhaseProfile;
-                        Rate.snr(p) = (obj.config.TxPower*abs(obj.IV.gr(p).*Rate.ur(p)).^2)./Noise;
-                        Rate.rate(p) = Rate.rate(p)+log2(1+Rate.snr(p))/cyclicPrifix;
-                    end
-                    Rate.rate(p)=Rate.rate(p)/Nn;
+            
+            Rate.snr_rand = (obj.config.TxPower*abs(obj.IV.gr.* ur).^2)./Noise;
+            Rate.rate_rand = log2(1+Rate.snr_rand)/cyclicPrifix;
+            
+            Rate.snr_dir = zeros(size(Rate.snr_rand));
+            Rate.rate_dir = zeros(size(Rate.rate_rand));
+            
+            Nn=100;
+            for p = 1:size(ur,1)
+                P=obj.IV.uePos.getV(1,p);
+                peb = obj.PEB(p);
+                sig = peb/sqrt(3);
+                for n=1:Nn
+                    Pn = P + randn(1,3)*sig/sqrt(3);
+                    uePos = SupPoint(Pn(1),Pn(2),Pn(3));
+                    k  = uePos.getKv(obj.config.lambda);
+                    RisPhaseProfile = exp(1j*k*obj.risElementLoc.').';
+                    ur = exp(-1j*obj.IV.k(p,:)*obj.risElementLoc.') * RisPhaseProfile;
+                    Rate.snr_dir(p) = (obj.config.TxPower*abs(obj.IV.gr(p).*ur).^2)./Noise;
+                    Rate.rate_dir(p) = Rate.rate_dir(p)+log2(1+Rate.snr_dir(p))/cyclicPrifix;
                 end
+                Rate.rate_dir(p)=Rate.rate_dir(p)/Nn;
             end
+            
             
         end
         
-       
+        
         
         function Jc = getJacobian(obj)
             % returens a cell of the length of number of points each with a 8X8 jacobian matrix
@@ -117,7 +120,7 @@ classdef CRBcal
             % parameters
             db = exp(-1j*2*pi*mod(obj.config.Df*obj.IV.tau_b*[0:obj.config.Nsc-1],1));
             dr = exp(-1j*2*pi*mod(obj.config.Df*obj.IV.tau_r*[0:obj.config.Nsc-1],1));
-            d = -1j*2*pi*[0:obj.config.Nsc-1]*obj.config.Df; 
+            d = -1j*2*pi*[0:obj.config.Nsc-1]*obj.config.Df;
             FIMch = cell(1,size(obj.config.xyz,2));
             tic
             for ip = 1:size(obj.config.xyz,2)
@@ -140,7 +143,7 @@ classdef CRBcal
                 end
                 ElTime = toc;
                 fprintf('Est. remaining time:  %.2f minuites \n', ElTime/ip*(size(obj.config.xyz,2)-ip)/60);
-
+                
             end
         end
         

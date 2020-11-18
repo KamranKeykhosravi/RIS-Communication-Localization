@@ -3,7 +3,6 @@ function config = GetConfig()
 config.secFactor = 1e9; % time scaling factor 1e9 means that time is in 
 %nano seconds and frequency in GHz
 config.c = 3e8/config.secFactor; %light speed m/ns
-config.risPhaseMethod = "random"; % in the set {"random","directional"}
 %% ofdm
 config.f = 30e9/config.secFactor; %frequency Ghz
 config.Df= 120e3/config.secFactor;%bandwidth Ghz
