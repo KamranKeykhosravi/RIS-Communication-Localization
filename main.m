@@ -23,8 +23,7 @@ cl = colorbar;
 %---------------------------- random SE---------
 figure 
 crbR = reshape(Rate.rate_rand,size(X));
-contourf(X,Y,crbR,10.^[-3,-2,-1.5,-1,-.5,-.2,0],'--')
-set(gca,'ColorScale','log')
+contourf(X,Y,crbR,[.03,.1,.2,.5,1],'--')
 xlabel('x (m)');ylabel('y(m)');
 title('SE (bits/sec/Hz)');
 cl = colorbar;

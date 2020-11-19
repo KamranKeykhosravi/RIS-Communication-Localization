@@ -56,17 +56,20 @@ classdef CRBcal
             % calculates the Spectral Efficiency for random and directional
             % ris phase profiles
             rng(0)
-            RisPhaseProfile = exp(1j*2*pi*rand(obj.config.Mc^2,1));
-            ur = exp(-1j*obj.IV.k*obj.risElementLoc.') * RisPhaseProfile;
-            cyclicPrifix=1.07;
-            Noise = (obj.config.Nsc*obj.config.Noise_Factor*obj.config.NPSD*obj.config.Df);
+            NoisePW= (obj.config.Nsc*obj.config.Noise_Factor*obj.config.NPSD*obj.config.Df);
+            Rate.rate_rand = zeros(size(obj.IV.k,1),1);
+            Nn=1000;
+            for i=1:Nn
+                RisPhaseProfile = exp(1j*2*pi*rand(obj.config.Mc^2,1));
+                ur = exp(-1j*obj.IV.k*obj.risElementLoc.') * RisPhaseProfile;
+                cyclicPrifix=1.07;
+                
+                snr_rand = (obj.config.TxPower*abs(obj.IV.gr.* ur).^2)./NoisePW;
+                Rate.rate_rand = Rate.rate_rand+log2(1+snr_rand)/cyclicPrifix;
+            end
+            Rate.rate_rand = Rate.rate_rand/Nn;
             
-            Rate.snr_rand = (obj.config.TxPower*abs(obj.IV.gr.* ur).^2)./Noise;
-            Rate.rate_rand = log2(1+Rate.snr_rand)/cyclicPrifix;
-            
-            Rate.snr_dir = zeros(size(Rate.snr_rand));
             Rate.rate_dir = zeros(size(Rate.rate_rand));
-            
             Nn=100;
             for p = 1:size(ur,1)
                 P=obj.IV.uePos.getV(1,p);
@@ -78,8 +81,8 @@ classdef CRBcal
                     k  = uePos.getKv(obj.config.lambda);
                     RisPhaseProfile = exp(1j*k*obj.risElementLoc.').';
                     ur = exp(-1j*obj.IV.k(p,:)*obj.risElementLoc.') * RisPhaseProfile;
-                    Rate.snr_dir(p) = (obj.config.TxPower*abs(obj.IV.gr(p).*ur).^2)./Noise;
-                    Rate.rate_dir(p) = Rate.rate_dir(p)+log2(1+Rate.snr_dir(p))/cyclicPrifix;
+                    snr_dir = (obj.config.TxPower*abs(obj.IV.gr(p).*ur).^2)./NoisePW;
+                    Rate.rate_dir(p) = Rate.rate_dir(p)+log2(1+snr_dir)/cyclicPrifix;
                 end
                 Rate.rate_dir(p)=Rate.rate_dir(p)/Nn;
             end
